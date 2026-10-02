@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>superLuna — Экосистема проектов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            black: '#000000',
+            dark: {
+              950: '#030303',
+              900: '#080808',
+              850: '#0d0d0f',
+              800: '#141416',
+              700: '#222226',
+            }
+          },
+          animation: {
+            'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
+            'float': 'float 6s ease-in-out infinite',
+            'spin-slow': 'spin 30s linear infinite',
+          },
+          keyframes: {
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.3', transform: 'scale(1)' },
+              '50%': { opacity: '0.6', transform: 'scale(1.08)' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-12px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+    
+    /* Стилизованные скроллбары */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #000000;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+
+    /* Световые эффекты */
+    .glow-radial {
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+    }
+    .glow-spot {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      filter: blur(40px);
+    }
+
+    /* Интерактивный Spotlight на карточках */
+    .spotlight-card {
+      position: relative;
+      background: #09090b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .spotlight-card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: radial-gradient(400px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(255, 255, 255, 0.4), transparent 40%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .spotlight-card:hover::before {
+      opacity: 1;
+    }
+    .spotlight-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px -10px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Декоративная лунная сфера */
+    .moon-sphere {
+      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #d4d4d8 25%, #52525b 60%, #18181b 90%, #000000 100%);
+      box-shadow: 
+        inset -15px -15px 40px rgba(0, 0, 0, 0.9),
+        0 0 60px 10px rgba(255, 255, 255, 0.15),
+        0 0 140px 30px rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body class="selection:bg-white selection:text-black font-sans antialiased bg-black min-h-screen relative">
+
+  <!-- Интерактивный холст со звездной пылью и созвездиями -->
+  <canvas id="starsCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- Световые градиенты заднего плана -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] pointer-events-none glow-radial -z-0"></div>
+
+  <!-- Контент страницы -->
+  <div class="relative z-10 flex flex-col min-h-screen">
+    
+    <!-- Шапка / Навигация -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-black/60 border-b border-white/[0.06] transition-all duration-300">
+      <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        
+        <!-- Логотип -->
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 rounded-full moon-sphere flex items-center justify-center transition-transform duration-500 group-hover:rotate-45"></div>
+          <div class="flex flex-col">
+            <span class="text-xl font-extrabold tracking-tight text-white flex items-center gap-1.5">
+              super<span class="text-zinc-400 font-light">Luna</span>
+            </span>
+          </div>
+        </a>
+
+        <!-- Статус и Быстрые ссылки -->
+        <div class="flex items-center gap-4 sm:gap-6">
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-zinc-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Ecosystem Online</span>
+          </div>
+
+          <a href="#projects" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-200 hidden md:inline-block">
+            Проекты
+          </a>
+
+          <a href="https://t.me/app_luna" target="_blank" rel="noopener noreferrer" 
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-zinc-200 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transform hover:scale-[1.02]">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.959z"/>
+            </svg>
+            <span>Telegram</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Секция -->
+    <main class="flex-1">
+      <section class="relative pt-20 pb-28 px-6 overflow-hidden">
+        <div class="max-w-5xl mx-auto text-center relative z-10 flex flex-col items-center">
+          
+          <!-- Бейдж -->
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.1] text-xs font-mono text-zinc-300 mb-8 backdrop-blur-sm animate-float">
+            <span class="text-zinc-500">✦</span>
+            <span>NEXT-GEN OPEN ECOSYSTEM</span>
+            <span class="text-zinc-500">✦</span>
+          </div>
+
+          <!-- Лунный интерактивный шар -->
+          <div class="relative mb-10 group cursor-pointer" id="lunaHeroOrb">
+            <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full moon-sphere transition-transform duration-700 ease-out group-hover:scale-105"></div>
+            <div class="absolute -inset-4 rounded-full border border-white/10 animate-spin-slow pointer-events-none"></div>
+            <div class="absolute -inset-8 rounded-full border border-dashed border-white/5 pointer-events-none"></div>
+          </div>
+
+          <!-- Заголовок -->
+          <h1 class="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter text-white mb-6 leading-none">
+            super<span class="text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-300 to-zinc-600">Luna</span>
+          </h1>
+
+          <!-- Подзаголовок -->
+          <p class="max-w-2xl text-lg sm:text-xl text-zinc-400 font-light leading-relaxed mb-10">
+            Платформа цифровых инструментов, открытых редакторов и серверной инфраструктуры. Минимализм. Скорость. Абсолютная свобода.
+          </p>
+
+          <!-- Кнопки действий -->
+          <div class="flex flex-wrap items-center justify-center gap-4">
+            <a href="#projects" class="px-7 py-3.5 rounded-xl font-semibold text-sm bg-white text-black hover:bg-zinc-200 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]">
+              Исследовать проекты ↓
+            </a>
+            <a href="https://hub.luna-app.space" target="_blank" rel="noopener noreferrer" class="px-7 py-3.5 rounded-xl font-semibold text-sm bg-dark-900 border border-white/15 text-white hover:bg-dark-800 hover:border-white/30 transition-all duration-300 flex items-center gap-2">
+              <svg class="w-4 h-4 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M1.05 12a11 11 0 0 0 21.9 0"></path>
+              </svg>
+              <span>lunaHub Git</span>
+            </a>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Разделитель -->
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+      </div>
+
+      <!-- Секция проектов -->
+      <section id="projects" class="py-24 px-6 relative">
+        <div class="max-w-7xl mx-auto">
+          
+          <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div>
+              <div class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-3">// PRODUCTS & CODE</div>
+              <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Проекты суперЛуны</h2>
+            </div>
+            <p class="text-sm text-zinc-400 max-w-md">
+              Среды разработки, веб-студии и распределенные хабы, построенные для максимальной эффективности.
+            </p>
+          </div>
+
+          <!-- Сетка карточек -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- ФЛАГМАН: OpenText webStudio (Широкая карточка на 12 колонок или 8) -->
+            <div class="lg:col-span-8 rounded-3xl p-8 sm:p-10 spotlight-card flex flex-col justify-between overflow-hidden relative group">
+              <!-- Свечение угла -->
+              <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/[0.04] rounded-full blur-3xl pointer-events-none"></div>
+
+              <div class="relative z-10">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-mono font-bold text-white text-base">
+                      W
+                    </div>
+                    <div>
+                      <h3 class="text-2xl font-bold text-white tracking-tight">OpenText webStudio</h3>
+                      <span class="text-xs font-mono text-zinc-400">Флагманский веб-редактор</span>
+                    </div>
+                  </div>
+                  <span class="px-3 py-1 rounded-full text-xs font-mono bg-white text-black font-semibold">
+                    Live Web App
+                  </span>
+                </div>
+
+                <p class="text-zinc-300 text-sm sm:text-base leading-relaxed mb-8 max-w-xl font-light">
+                  Мощная облачная среда для создания и форматирования текстов прямо в браузере. Быстрый рендеринг, чистое окружение без лишних отвлекающих элементов и мгновенный доступ без установки.
+                </p>
+
+                <!-- Интерактивная имитация интерфейса -->
+                <div class="w-full bg-black/60 rounded-xl border border-white/10 p-4 mb-8 font-mono text-xs text-zinc-400 overflow-x-auto">
+                  <div class="flex items-center gap-2 mb-3 pb-2 border-b border-white/5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+                    <span class="text-zinc-500 text-[11px] ml-2">opentext.luna-app.space</span>
+                  </div>
+                  <div class="text-zinc-300"><span class="text-zinc-500">1</span> // Запуск OpenText webStudio в браузере</div>
+                  <div class="text-zinc-300"><span class="text-zinc-500">2</span> <span class="text-white font-semibold">import</span> { Workspace } <span class="text-white font-semibold">from</span> '@superluna/opentext';</div>
+                  <div class="text-zinc-300"><span class="text-zinc-500">3</span> Workspace.init({ cloudSync: <span class="text-zinc-400">true</span>, theme: <span class="text-zinc-400">'monochrome'</span> });</div>
+                </div>
+              </div>
+
+              <!-- Кнопки действий -->
+              <div class="relative z-10 flex flex-wrap items-center gap-4 pt-4 border-t border-white/10">
+                <!-- Главная кнопка на opentext.luna-app.space -->
+                <a href="https://opentext.luna-app.space" target="_blank" rel="noopener noreferrer"
+                   class="px-6 py-3 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.25)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+                  <span>Открыть webStudio</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                  </svg>
+                </a>
+
+                <!-- Кнопка на GitHub -->
+                <a href="https://github.com/magic4n/OpenText-webStudio/" target="_blank" rel="noopener noreferrer"
+                   class="px-5 py-3 rounded-xl bg-white/[0.05] border border-white/10 text-white font-medium text-sm hover:bg-white/10 hover:border-white/20 transition-all duration-300 flex items-center gap-2">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                  </svg>
+                  <span>GitHub</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- lunaHub (experimental) -->
+            <div class="lg:col-span-4 rounded-3xl p-8 spotlight-card flex flex-col justify-between relative group">
+              <div class="relative z-10">
+                <div class="flex items-center justify-between gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-mono font-bold text-white text-base">
+                    H
+                  </div>
+                  <span class="px-2.5 py-1 rounded-full text-[11px] font-mono bg-amber-400/10 text-amber-300 border border-amber-400/20 font-medium">
+                    experimental
+                  </span>
+                </div>
+
+                <h3 class="text-2xl font-bold text-white tracking-tight mb-2">lunaHub</h3>
+                <div class="text-xs font-mono text-zinc-400 mb-4">hub.luna-app.space</div>
+
+                <p class="text-zinc-400 text-sm leading-relaxed mb-6 font-light">
+                  Собственный Git-сервер и хаб версионирования. Разрабатывайте, храните коммиты и управляйте кодом в приватной инфраструктуре superLuna.
+                </p>
+
+                <!-- Статус Git -->
+                <div class="bg-black/40 rounded-xl p-3 border border-white/5 font-mono text-xs text-zinc-400 space-y-2 mb-6">
+                  <div class="flex items-center justify-between">
+                    <span class="text-zinc-500">Protocol</span>
+                    <span class="text-white">SSH / HTTPS</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-zinc-500">Core</span>
+                    <span class="text-white">Git Engine</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кнопка на lunaHub -->
+              <div class="relative z-10 pt-4 border-t border-white/10">
+                <a href="https://hub.luna-app.space" target="_blank" rel="noopener noreferrer"
+                   class="w-full py-3 px-4 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.15)]">
+                  <span>Перейти в lunaHub</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <!-- OpenText Studio (Desktop) -->
+            <div class="lg:col-span-7 rounded-3xl p-8 spotlight-card flex flex-col justify-between relative group">
+              <div class="relative z-10">
+                <div class="flex items-center justify-between gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-mono font-bold text-white text-base">
+                    S
+                  </div>
+                  <span class="px-2.5 py-1 rounded-full text-[11px] font-mono bg-white/[0.05] text-zinc-300 border border-white/10 font-medium">
+                    Native Desktop
+                  </span>
+                </div>
+
+                <h3 class="text-2xl font-bold text-white tracking-tight mb-2">OpenText Studio</h3>
+                <div class="text-xs font-mono text-zinc-500 mb-4">github.com/magic4n/OpenText-Studio</div>
+
+                <p class="text-zinc-300 text-sm leading-relaxed mb-6 font-light max-w-lg">
+                  Автономная и производительная десктопная студия для глубокой работы с текстами. Поддержка локальных репозиториев, плагинов и максимальной конфиденциальности.
+                </p>
+
+                <!-- Теги -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/10 text-xs font-mono text-zinc-400">Open Source</span>
+                  <span class="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/10 text-xs font-mono text-zinc-400">High Performance</span>
+                  <span class="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/10 text-xs font-mono text-zinc-400">Cross-Platform</span>
+                </div>
+              </div>
+
+              <!-- Кнопка на GitHub OpenText Studio -->
+              <div class="relative z-10 pt-4 border-t border-white/10">
+                <a href="https://github.com/magic4n/OpenText-Studio/" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/[0.08] hover:bg-white text-zinc-200 hover:text-black font-semibold text-sm transition-all duration-300 border border-white/15">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                  </svg>
+                  <span>Репозиторий OpenText Studio</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Telegram Канал Баннер -->
+            <div class="lg:col-span-5 rounded-3xl p-8 spotlight-card flex flex-col justify-between relative group border-white/20">
+              <div class="relative z-10">
+                <div class="flex items-center justify-between gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.959z"/>
+                    </svg>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-full text-[11px] font-mono bg-white text-black font-semibold">
+                    Community
+                  </span>
+                </div>
+
+                <h3 class="text-2xl font-bold text-white tracking-tight mb-2">Telegram Канал</h3>
+                <div class="text-xs font-mono text-zinc-400 mb-4">@app_luna • t.me/app_luna</div>
+
+                <p class="text-zinc-300 text-sm leading-relaxed mb-6 font-light">
+                  Главный источник анонсов, обновлений экосистемы superLuna, релизов OpenText и изменений lunaHub.
+                </p>
+              </div>
+
+              <!-- Кнопка Telegram -->
+              <div class="relative z-10 pt-4 border-t border-white/10 flex flex-col sm:flex-row gap-3">
+                <a href="https://t.me/app_luna" target="_blank" rel="noopener noreferrer"
+                   class="flex-1 py-3 px-4 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                  <span>Подписаться на канал</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Информационная цитата / Манифест -->
+      <section class="py-20 px-6 border-t border-white/5 relative">
+        <div class="max-w-4xl mx-auto text-center">
+          <div class="w-12 h-12 rounded-full moon-sphere mx-auto mb-6 opacity-75"></div>
+          <blockquote class="text-xl sm:text-2xl text-zinc-300 font-light italic leading-relaxed mb-6">
+            «Простота — высшая ступень изысканности. Ничего лишнего: чистый код, монохромный фокус и свобода созидания.»
+          </blockquote>
+          <div class="text-xs font-mono text-zinc-500 uppercase tracking-widest">— superLuna Philosophy</div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Футер -->
+    <footer class="border-t border-white/[0.08] bg-black py-12 px-6">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <div class="flex items-center gap-3">
+          <div class="w-6 h-6 rounded-full moon-sphere"></div>
+          <span class="font-bold text-white text-base tracking-tight">superLuna</span>
+          <span class="text-zinc-600 text-xs font-mono">|</span>
+          <span class="text-zinc-500 text-xs font-mono">Monochrome Ecosystem</span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-400 font-mono">
+          <a href="https://opentext.luna-app.space" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">webStudio</a>
+          <a href="https://hub.luna-app.space" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">lunaHub</a>
+          <a href="https://github.com/magic4n/OpenText-Studio/" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">GitHub Studio</a>
+          <a href="https://t.me/app_luna" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">Telegram</a>
+        </div>
+
+        <div class="text-xs text-zinc-600 font-mono">
+          © 2026 superLuna. One File Architecture.
+        </div>
+
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Интерактивные скрипты (Анимация созвездий + Spotlight) -->
+  <script>
+    // 1. Анимация звездного неба на Canvas
+    const canvas = document.getElementById('starsCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      initStars();
+    });
+
+    const stars = [];
+    const numStars = Math.floor((width * height) / 8000);
+    const mouse = { x: null, y: null, maxDist: 130 };
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    window.addEventListener('mouseleave', () => {
+      mouse.x = null;
+      mouse.y = null;
+    });
+
+    function initStars() {
+      stars.length = 0;
+      const count = Math.min(140, Math.floor((width * height) / 9000));
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          radius: Math.random() * 1.5 + 0.5,
+          alpha: Math.random() * 0.7 + 0.2
+        });
+      }
+    }
+
+    function animateStars() {
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        s.x += s.vx;
+        s.y += s.vy;
+
+        if (s.x < 0) s.x = width;
+        if (s.x > width) s.x = 0;
+        if (s.y < 0) s.y = height;
+        if (s.y > height) s.y = 0;
+
+        // Рисуем звезду
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+        ctx.fill();
+
+        // Линии между близкими звездами
+        for (let j = i + 1; j < stars.length; j++) {
+          const s2 = stars[j];
+          const dx = s.x - s2.x;
+          const dy = s.y - s2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 85) {
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s2.x, s2.y);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * (1 - dist / 85)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+
+        // Соединение с курсором
+        if (mouse.x !== null) {
+          const mdx = s.x - mouse.x;
+          const mdy = s.y - mouse.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+
+          if (mdist < mouse.maxDist) {
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 * (1 - mdist / mouse.maxDist)})`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+          }
+        }
+      }
+
+      requestAnimationFrame(animateStars);
+    }
+
+    initStars();
+    animateStars();
+
+    // 2. Интерактивный Spotlight на карточках
+    const cards = document.querySelectorAll('.spotlight-card');
+    cards.forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+      });
+    });
+
+    // 3. Интерактивная реакция луны в Hero
+    const orb = document.getElementById('lunaHeroOrb');
+    if (orb) {
+      orb.addEventListener('click', () => {
+        orb.style.transform = 'scale(0.92)';
+        setTimeout(() => {
+          orb.style.transform = 'scale(1.1)';
+          setTimeout(() => {
+            orb.style.transform = 'scale(1)';
+          }, 250);
+        }, 150);
+      });
+    }
+  </script>
+</body>
+</html>
